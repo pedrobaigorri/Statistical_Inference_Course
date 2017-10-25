@@ -1,0 +1,168 @@
+---
+title: "Hypothesis Testing"
+author: "Pedro A. Alonso Baigorri"
+date: "11 de octubre de 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis
+In this document I'm going to analyze the ToothGrowth data in the R datasets package
+with the objective to perform and hypothesis tests to compare tooth growth by supp and dose. 
+
+The ToothGrowth data, provides data samples about the Effect of Vitamin C on Tooth 
+Growth in Guinea Pigs.
+
+## Summary of the data
+
+First of all, I'll load the data and I will perform some basic analysis over the data.
+
+```{r}
+data(ToothGrowth)
+
+head(ToothGrowth)
+
+summary(ToothGrowth)
+```
+
+It can be show that the dataset contains `r nrow(ToothGrowth)` observations with 
+`r ncol(ToothGrowth)` variables:
+
+- len: tooth length
+- supp: the sumplement type
+- dose: the doses in mgms/day
+
+The number of measures by the different levels of dose and supp are identical as can
+be shown now:
+
+```{r}
+table(ToothGrowth$supp, ToothGrowth$dose)
+```
+
+The following plots gives more information about the dataset:
+
+```{r echo = FALSE , fig.width=8 , fig.height=4}
+require(graphics)
+coplot(len ~ dose | supp, data = ToothGrowth, panel = panel.smooth,
+       xlab = "ToothGrowth data: length vs dose, given type of supplement")
+```
+
+```{r echo = FALSE , fig.width=8 , fig.height=3}
+boxplot(len ~ dose, data = ToothGrowth, main = "Tooth Length distribution by Dose", ylab = "length", xlab = "dose (mgm/day)")
+boxplot(len ~ supp, data = ToothGrowth, main = "Tooth Length distribution by Supplement Type", ylab = "length", xlab = "sumplement type")
+
+```
+
+
+According to the plots we can see how the length is increasing with the number of dosis.
+And in general it seems that the length is also higher with the supplement type is OJ.
+
+## Assumptions
+
+To perform the hypothesis tests I will do the following assumptions:
+
+- The population for the experiment follows a normal distribution
+- The variance of the population for different supplement types are similar.
+
+
+## Hypothesis tests 
+
+I will test the Hypothesis Ho that the mean for different type of supplement type (OJ | VC)
+are identical. This is that the differences of the mean = 0. So Ho (mean(x|OJ) - mean (x|VC) = 0).
+
+Then the althernative hypothesis is Ha (mean(x|OJ) - mean (x|VC) =! 0).
+
+In the first test I will use all the samples including all the doses quantities.
+For all the tests I will use alpha = 0.1.
+
+```{r echo = FALSE}
+alpha <- 0.10
+
+# for all doses
+t <- t.test(len ~ supp, paired = FALSE, var.equal = TRUE, data = ToothGrowth, 
+    alternative = "two.sided",conf.level = 1-alpha, mu = 0)
+t
+
+```
+
+According to this results the p-value (`r t$p.value`) is lower then `r alpha` so we
+reject the null hypothesis.
+
+This can be confirmed seeing the confidence intervals for the difference of 
+the mean:
+
+`r t$conf.int`
+
+than are clearly above 0.
+
+Now, I will perform a new set of hypothesis tests but now I will separate in different
+tests the samples for each level of doses to see the effect of the doses in the experiment.
+
+
+```{r echo = FALSE}
+ToothGrowth$dosef <- as.factor(ToothGrowth$dose)
+
+# different test for each levels of doses
+for (i in levels(ToothGrowth$dosef))
+{
+    s <- subset(ToothGrowth, dosef == i)
+    test <- t.test(len ~ supp, paired = FALSE, var.equal = TRUE, data = s, 
+                    alternative = "two.sided",conf.level = 1-alpha, mu = 0)
+    
+    cat("Dose = ",i,"; p-value:",test$p.value, "Confidence intervals:", 
+            test$conf.int, "\n") 
+}
+```
+
+In this case we can see that for the first 2 levels of doses (0.5 and 1) we can reject the
+null hypothesis as the p.values are very low and confidence intervals are always above 0.
+
+But in the case of dose = 2, we can't reject Ho, because p-value is higher than alpha. 
+We can see also that in this case the mean difference = 0 is inside of the confidence interval.
+
+## Conclusions
+
+According to the tests we can conclude:
+
+- For the doses = 0.5 & 1, there are a significance difference between the samples 
+with the different types of Supplement Types: OJ Vs VC
+
+- However, when the dose = 2, we can't say that there is a significance difference 
+so we can't conclude that the different Supplement Types affect to the increase
+of the tooth length.
+
+----
+
+# Annexes
+
+# Code for Hypothesis tests
+
+```{r eval = FALSE}
+alpha <- 0.10
+
+# for all doses
+t <- t.test(len ~ supp, paired = FALSE, var.equal = TRUE, data = ToothGrowth, 
+    alternative = "two.sided",conf.level = 1-alpha, mu = 0)
+t
+
+```
+
+```{r eval = FALSE}
+ToothGrowth$dosef <- as.factor(ToothGrowth$dose)
+
+# different test for each levels of doses
+for (i in levels(ToothGrowth$dosef))
+{
+    s <- subset(ToothGrowth, dosef == i)
+    test <- t.test(len ~ supp, paired = FALSE, var.equal = TRUE, data = s, 
+                    alternative = "two.sided",conf.level = 1-alpha, mu = 0)
+    
+    cat("Dose = ",i,"; p-value:",test$p.value, "Confidence intervals:", 
+            test$conf.int, "\n") 
+}
+```
